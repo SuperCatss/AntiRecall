@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Forms;
 using System.Drawing;
-using socks5;
 using System.Net;
 using System.Diagnostics;
 using AntiRecall.deploy;
@@ -10,6 +10,7 @@ using AntiRecall.network;
 using System.Threading;
 using System.IO;
 using AntiRecall.patch;
+using System.Collections.Generic;
 
 namespace AntiRecall
 {
@@ -19,21 +20,19 @@ namespace AntiRecall
     
     public partial class MainWindow : Window
     {
-
-        private string port;
         private static NotifyIcon ni;
-        public static socks5.Socks5Server proxy;
+        public static Dictionary<string, patch_memory> instances;
         public static double count { get; set; }
         public static bool is_recallmodule_load { get; set; }
 
-        private void init_minimize()
+        private void Init_minimize()
         {
-            MenuItem menuItem1 = new MenuItem();
-            ContextMenu contextMenu = new ContextMenu();
+            System.Windows.Forms.MenuItem menuItem1 = new System.Windows.Forms.MenuItem();
+            System.Windows.Forms.ContextMenu contextMenu = new System.Windows.Forms.ContextMenu();
 
             menuItem1.Index = 0;
-            menuItem1.Text = "退出";
-            menuItem1.Click += new System.EventHandler(menuItem1_Click);
+            menuItem1.Text = "Exit";
+            menuItem1.Click += new System.EventHandler(MenuItem1_Click);
             contextMenu.MenuItems.Add(menuItem1);
 
             ni = new NotifyIcon();
@@ -44,8 +43,14 @@ namespace AntiRecall
             ni.Icon = new Icon("../../Resources/main-blue.ico");
 #else
             ShortCut.currentDirectory = Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName);
-         
-            ni.Icon = new Icon(ShortCut.currentDirectory + "\\Resources\\main-blue.ico");
+            try
+            {
+                ni.Icon = new Icon(ShortCut.currentDirectory + "\\Resources\\main-blue.ico");
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("No ico found");
+            }
             
 #endif
             ni.DoubleClick +=
@@ -57,85 +62,44 @@ namespace AntiRecall
                 };
         }
 
-        private void init_socks5()
-        {
-            if (port!=null)
-                proxy = new Socks5Server(IPAddress.Any, Convert.ToInt32(port));
-            proxy.PacketSize = 65535;
-            proxy.Start();
-        }
-
         private delegate void TextChanger();
 
         public void ModeCheck()
         {
-             if (Xml.antiRElement["Mode"] == "proxy")
+
+            if (Xml.currentElement["Mode"] == "patch")
             {
-                this.PortItem.Foreground = System.Windows.Media.Brushes.Black;
-                this.PortText.Foreground = System.Windows.Media.Brushes.Black;
-                this.PortText.IsReadOnly = false;
-                this.Proxy_button.IsChecked = true;
-                this.Memory_patch_button.IsChecked = false;
-                this.Descript_text.Text = "请手动为QQ设置代理";
+                this.Descript_text.Text = "All set";
                 this.Explorer.Foreground = System.Windows.Media.Brushes.Black;
                 this.Explorer.IsEnabled = true;
             }
 
-            if (Xml.antiRElement["Mode"] == "patch")
+            if (-1 != Xml.currentElement["Path"].IndexOf("exe"))
             {
-                this.PortItem.Foreground = System.Windows.Media.Brushes.Gray;
-                this.PortText.Foreground = System.Windows.Media.Brushes.Gray;
-                this.PortText.IsReadOnly = true;
-                this.Proxy_button.IsChecked = false;
-                this.Memory_patch_button.IsChecked = true;
-                this.Descript_text.Text = "请保证在开启后30秒内登录QQ";
-                this.Explorer.Foreground = System.Windows.Media.Brushes.Black;
-                this.Explorer.IsEnabled = true;
-            }
-
-            if (-1 != Xml.antiRElement["QQPath"].IndexOf("QQ.exe"))
-            {
-                this.Explorer.Content = "一切就绪";
+                this.Explorer.Content = Strings.explorer_ready;
             }
         }
-        /*
-        private void UpdateCount()
-        {
-            Regex re = new Regex("\\[\\d*\\]");
-#if DEBUG
-            Console.WriteLine(count);
-#endif
-            Recall_Text.Text = re.Replace(Recall_Text.Text, "["+Convert.ToString(Math.Ceiling(count / 8))+"]");
-        }
-
-        public void ModifyRecallCount()
-        {
-            Recall_Text.Dispatcher.Invoke(
-                System.Windows.Threading.DispatcherPriority.Normal,
-                new TextChanger(UpdateCount));
-        }*/
-
         
         public MainWindow()
         {
             InitializeComponent();
-            ShortCut.init_shortcut("AntiRecall");
-            Xml.init_xml();
+            instances = InitializeInstances();
+            Xml xml = new Xml();
+            ShortCut.init_shortcut(Strings.title);
+            xml.Init_xml();
             CheckUpdate.init_checkUpdate();
-            init_minimize();
-            if (Xml.CheckXml())
-            {
-                Xml.antiRElement["PortText"] = Xml.QueryXml("PortText");
-                Xml.antiRElement["QQPath"] = Xml.QueryXml("QQPath");
-                Xml.antiRElement["Mode"] = Xml.QueryXml("Mode");
-                PortText.Text = Xml.antiRElement["PortText"];
-            }
-            else
-            {
-                Xml.CreateXml(Xml.antiRElement);
-            }
+            Init_minimize();
             ModeCheck();
-            this.Descript_text.Text = Xml.antiRElement["Descript"];
+            this.Descript_text.Text = Strings.title+" v" + ShortCut.myVersion;
+        }
+
+        private Dictionary<string, patch_memory> InitializeInstances()
+        {
+            Dictionary<string, patch_memory> instances = new Dictionary<string, patch_memory>();
+            instances["QQ"] = new QQPatch("QQ", "im.dll");
+            instances["Wechat"] = new WechatPatch("Wechat", "wechatwin.dll");
+            instances["Telegram"] = new TelegramPatch("Telegram", "telegram.exe");
+            return instances;
         }
 
 
@@ -144,12 +108,9 @@ namespace AntiRecall
 
             if (this.Start.IsChecked == false)
             {
-                if (Xml.antiRElement["Mode"] == "proxy")
-                {
-                    proxy.Stop();
-                }
+                Xml.currentElement["Launch"] = Strings.launch_stopped;
 
-                if (Xml.antiRElement["Mode"] == "patch")
+                if (Xml.currentElement["Mode"] == "patch")
                 {
 
                 }
@@ -157,54 +118,43 @@ namespace AntiRecall
 
             if (this.Start.IsChecked == true)
             {
-                port = PortText.Text;
+                Xml.currentElement["Launch"] = Strings.launch_started;
 
-                if (Xml.antiRElement["Mode"] == "proxy")
+                if (Xml.currentElement["Mode"] == "patch")
                 {
-                    init_socks5();
-                    //Startup.init_startup();
-                    //Modify xml
-                    Xml.antiRElement["PortText"] = PortText.Text;
-                    if (!Xml.CheckXml())
-                        Xml.CreateXml(Xml.antiRElement);
-                    else
-                        Xml.ModifyXml(Xml.antiRElement);
-                    
-                }
-                else if (Xml.antiRElement["Mode"] == "patch")
-                {
-                    Xml.antiRElement["PortText"] = PortText.Text;
-                    if (!Xml.CheckXml())
-                        Xml.CreateXml(Xml.antiRElement);
-                    else
-                        Xml.ModifyXml(Xml.antiRElement);
-                    var th = new Thread(() => patch_memory.StartPatch());
+                    Xml.ModifyXml(Xml.currentApp, Xml.currentElement);
+                    var th = new Thread(() => instances[Xml.currentApp].StartPatch());
                     th.Start();
-                    
                 }
                 else
                 {
-                    System.Windows.MessageBox.Show("请选择一个有效的防撤回模式");
+                    System.Windows.MessageBox.Show(Strings.invalid_method, Strings.warning);
+                    this.Start.IsChecked = false;
                     return;
                 }
 
-                if (-1 != Xml.antiRElement["QQPath"].IndexOf("QQ.exe"))
+                if (-1 != Xml.currentElement["Path"].IndexOf("exe"))
                 {
                     try
                     {
                         Process process = new Process();
-                        process.StartInfo.FileName = Xml.antiRElement["QQPath"];
+                        process.StartInfo.FileName = Xml.currentElement["Path"];
                         //process.StartInfo.WindowStyle = ProcessWindowStyle.Maximized;
                         process.StartInfo.CreateNoWindow = true;
                         process.Start();
-
+                        MinimizeWindow();
                     }
                     catch (Exception)
                     {
-                        System.Windows.MessageBox.Show("启动QQ.exe失败，请确认路径正确或手动启动");
+                        System.Windows.MessageBox.Show(Strings.incorrect_target_path, Strings.warning);
+                        this.Start.IsChecked = false;
                     }
                 }
-                MinimizeWindow();
+                else
+                {
+                    System.Windows.MessageBox.Show(Strings.invalid_target_path, Strings.warning);
+                    this.Start.IsChecked = false;
+                }
             }
         }
 
@@ -227,18 +177,16 @@ namespace AntiRecall
             {
                 // Open document 
                 string filepath = dlg.FileName;
-                Xml.antiRElement["QQPath"] = filepath;
+                Xml.currentElement["Path"] = filepath;
 
             }
 
             
         }
 
-        private void menuItem1_Click(object Sender, EventArgs e)
+        private void MenuItem1_Click(object Sender, EventArgs e)
         {
             ni.Visible = false;
-            if (proxy != null)
-                proxy.Stop();
             Close();
         }
 
@@ -246,8 +194,8 @@ namespace AntiRecall
         {
             this.Hide();
 
-            ni.BalloonTipTitle = "AntiRecall";
-            ni.BalloonTipText = "已将AntiRecall最小化到托盘,程序将在后台运行";
+            ni.BalloonTipTitle = Strings.title;
+            ni.BalloonTipText = Strings.minimized;
             ni.BalloonTipIcon = ToolTipIcon.Info;
             ni.ShowBalloonTip(30000);
         }
@@ -262,8 +210,6 @@ namespace AntiRecall
         protected override void OnClosed(EventArgs e)
         {
             ni.Visible = false;
-            if (proxy!=null)
-                proxy.Stop();
             base.OnClosed(e);
             App.Current.Shutdown();
         }
@@ -273,5 +219,9 @@ namespace AntiRecall
 
         }
 
+        private void Current_App_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+
+        }
     }
 }

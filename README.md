@@ -1,43 +1,42 @@
-# AntiRecall（QQ防撤回）
+# AntiRecall (For Telegram, WeChat, and QQ)
 
-这款软件用于Win PC平台，针对QQ撤回功能，模块加载成功后方能使用
+![Platform](https://img.shields.io/badge/Platform-Windows-brightgreen)  ![Version](https://img.shields.io/badge/Version-v3.0.0-red)  ![Download](https://img.shields.io/badge/Downloads-2.0K-yellow)  ![GPL license](https://img.shields.io/badge/License-GPL-blue.svg)
 
-## 新功能
+:crescent_moon: English | :sleeping:[简体中文](/README-zh.md)
 
-- 新增内存补丁模式，防撤回更加高效稳定
-- 重写了ui
-- 新增恢复QQ自启动功能
+Anti-Recall is a tool prevents messages from deleting/revoking/recalling by servers. It currently supports  **Telegram**, **WeChat**, and **QQ**.
 
-![](https://etenal.me/wp-content/uploads/2017/08/3.gif)
 
-## 下载地址
+
+## Support
+
+- Prevent messages from deleting/revoking by server (*Telegram* :heavy_check_mark: *WeChat* :heavy_check_mark: *QQ* :heavy_check_mark:)
+- Hot patch without modifying original application
+- No overhead due to the binary level patching
+- Tag deleted message (Tagging deleted message bases on [Telegram-Anti-Revoke](https://github.com/SpriteOvO/Telegram-Anti-Revoke ))
+
+## Download
 
 [github release](https://github.com/FlyRabbit/AntiRecall/releases)
 
-## 使用方法
+## Demo
 
-### 补丁模式
+##### Telegram :arrow_down_small:
 
-###### 选用补丁模式并运行
+![](resource/telegram.gif)
 
-![](https://etenal.me/wp-content/uploads/2017/08/4.gif)
+##### WeChat :arrow_down_small:
 
-### 代理模式
-###### 配置代理
+![](resource/wechat.gif)
 
-![](https://etenal.me/wp-content/uploads/2017/08/0.gif)
+##### QQ :arrow_down_small:
 
-###### 配置AntiRecall
+![](resource/qq.gif)
 
-![](https://etenal.me/wp-content/uploads/2017/08/1.gif)
+## How to use it?
 
-###### 等待撤回模块加载
+![](resource/how_to_use.gif)
 
-![](https://etenal.me/wp-content/uploads/2017/08/2.gif)
+## To-do 
 
-## TO DO
-
-#### 加快proxy处理数据包速度
-#### 加入自定义规则
-#### 定位具体撤回消息
-
+- View the original content of edited messages(Telegram)
